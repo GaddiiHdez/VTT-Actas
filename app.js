@@ -564,8 +564,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             errMsg.toLowerCase().indexOf('failed') !== -1;
 
           if (attempt < maxRetries && isRetriable) {
+            var shortErrMsg = errMsg.length > 60 ? errMsg.substring(0, 60) + '...' : errMsg;
             console.warn('Gemini falló en audio (intento ' + attempt + '). Reintentando en ' + (backoffMs/1000) + 's...', err);
-            updateProgress(true, '⚠️ Servidor saturado. Reintentando en ' + (backoffMs/1000) + 's... (Intento ' + attempt + '/' + (maxRetries - 1) + ')', 30, 'Esperando reintento...', 'Parte 1 de 1');
+            updateProgress(true, '⚠️ Error: ' + shortErrMsg + '. Reintentando en ' + (backoffMs/1000) + 's... (Intento ' + attempt + '/' + (maxRetries - 1) + ')', 30, 'Esperando reintento...', 'Parte 1 de 1');
             await new Promise(function(resolve) { setTimeout(resolve, backoffMs); });
             backoffMs *= 2;
           } else {
@@ -724,11 +725,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             errMsg.toLowerCase().indexOf('failed') !== -1;
 
           if (attempt < maxRetries && isRetriable) {
+            var shortErrMsg = errMsg.length > 60 ? errMsg.substring(0, 60) + '...' : errMsg;
             console.warn('Gemini falló (intento ' + attempt + ' de ' + maxRetries + '). Reintentando en ' + (backoffMs / 1000) + 's...', err);
             
             updateProgress(
               true,
-              '⚠️ Servidor saturado. Reintentando parte ' + partNum + ' en ' + (backoffMs / 1000) + 's... (Intento ' + attempt + '/' + (maxRetries - 1) + ')',
+              '⚠️ Error: ' + shortErrMsg + '. Reintentando parte ' + partNum + ' en ' + (backoffMs / 1000) + 's... (Intento ' + attempt + '/' + (maxRetries - 1) + ')',
               startPct,
               'Esperando reintento...',
               'Parte ' + partNum + ' de ' + totalChunks
