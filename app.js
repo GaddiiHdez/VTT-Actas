@@ -459,14 +459,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function doConvert() {
     var o = opts();
+    var modelVal = o.model || 'gemini-3.5-flash';
+    var freeLimit = modelVal === 'gemini-3.1-pro' ? 32000 : 1000000;
+    var modelLabel = modelVal === 'gemini-3.1-pro' ? 'Gemini 3.1 Pro (32k tokens)' : 'Gemini Flash (1M tokens)';
 
     if (S.inputType === 'audio') {
       if (!S.audioData) { toast('El archivo de audio no ha terminado de cargarse.', true); return; }
       if (!o.useAI) { toast('El procesamiento de audio requiere activar Gemini AI.', true); return; }
       
       var estimatedTokens = Math.ceil(S.audioDuration * 258) + 2500;
-      if (estimatedTokens > 1000000) {
-        var proceed = confirm('El archivo de audio excede el límite de 1M de tokens del tier gratuito. Si no tienes una cuenta de facturación de pago en Google AI Studio, la solicitud podría fallar con un error de límite de cuota (HTTP 429). ¿Deseas continuar de todos modos?');
+      if (estimatedTokens > freeLimit) {
+        var proceed = confirm('El archivo de audio (' + estimatedTokens.toLocaleString('es-ES') + ' tokens) excede el límite del tier gratuito para ' + modelLabel + '. Si no tienes una cuenta de facturación de pago en Google AI Studio, la solicitud podría fallar. ¿Deseas continuar de todos modos?');
         if (!proceed) return;
       }
     } else {
@@ -474,8 +477,8 @@ document.addEventListener('DOMContentLoaded', function () {
       
       var rawLen = S.vttRaw ? S.vttRaw.length : 0;
       var estimatedTokens = Math.ceil(rawLen / 3.5) + 2500;
-      if (estimatedTokens > 1000000) {
-        var proceed = confirm('El texto de entrada excede el límite de 1M de tokens del tier gratuito. Si no tienes una cuenta de facturación de pago, la solicitud podría fallar. ¿Deseas continuar?');
+      if (estimatedTokens > freeLimit) {
+        var proceed = confirm('El texto de entrada (' + estimatedTokens.toLocaleString('es-ES') + ' tokens) excede el límite del tier gratuito para ' + modelLabel + '. Si no tienes una cuenta de facturación de pago, la solicitud podría fallar. ¿Deseas continuar?');
         if (!proceed) return;
       }
     }
@@ -971,7 +974,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  /* Estimador de Tokens y Costos (Gemini 3.5 Flash) */
+  /* Estimador de Tokens y Costos (Gemini 3.5 Flash / 2.5 Flash / 3.1 Pro) */
   function updateTokenEstimator() {
     var container = e('token-estimator-container');
     if (!container) return;
@@ -982,6 +985,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     container.classList.remove('hidden');
+
+    var modelVal = e('opt-ai-model') ? e('opt-ai-model').value : 'gemini-3.5-flash';
+    var modelRate = 0.075; // Por cada 1M tokens
+    var freeLimit = 1000000;
+
+    if (modelVal === 'gemini-3.1-pro') {
+      modelRate = 1.25;
+      freeLimit = 32000;
+    }
 
     var tokens = 0;
     var cost = 0.0;
@@ -999,29 +1011,50 @@ document.addEventListener('DOMContentLoaded', function () {
       tokens = Math.ceil(rawLen / 3.5) + 2500;
     }
 
-    cost = (tokens / 1000000) * 0.075;
+    cost = (tokens / 1000000) * modelRate;
 
-    if (tokens < 200000) {
-      badgeClass = 'badge-success';
-      badgeText = 'Grátis · Muy Seguro';
-      msg = 'Consumo bajo. Esta petición se procesará sin problemas en el tier gratuito.';
-    } else if (tokens < 800000) {
-      badgeClass = 'badge-warning';
-      borderClass = 'warning-border';
-      badgeText = 'Grátis · Moderado';
-      msg = 'Consumo moderado. Aceptado en el tier gratuito (límite 1M TPM).';
-    } else if (tokens < 1000000) {
-      badgeClass = 'badge-warning';
-      borderClass = 'warning-border';
-      textClass = 'text-warning';
-      badgeText = 'Grátis · Límite Cercano';
-      msg = '¡Atención! Estás cerca del límite de 1M de tokens por minuto del tier gratuito. Si experimentas un error 429, espera un minuto antes de reintentar.';
+    if (modelVal === 'gemini-3.1-pro') {
+      if (tokens < 10000) {
+        badgeClass = 'badge-success';
+        badgeText = 'Pro · Muy Seguro';
+        msg = 'Consumo bajo. Petición procesada sin problemas en el tier gratuito de Pro.';
+      } else if (tokens < 32000) {
+        badgeClass = 'badge-warning';
+        borderClass = 'warning-border';
+        textClass = 'text-warning';
+        badgeText = 'Pro · Límite Cercano';
+        msg = '¡Atención! Estás cerca del límite estricto de 32k tokens/minuto de Gemini Pro Gratuito. Si da error 429, cambia a Flash.';
+      } else {
+        badgeClass = 'badge-danger';
+        borderClass = 'danger-border';
+        textClass = 'text-danger';
+        badgeText = 'Pro · Excede Cuota';
+        msg = '⚠️ Supera el límite de 32k tokens de Gemini Pro Gratuito. Fallará a menos que uses clave de pago o cambies a Flash.';
+      }
     } else {
-      badgeClass = 'badge-danger';
-      borderClass = 'danger-border';
-      textClass = 'text-danger';
-      badgeText = 'Excede Cuota';
-      msg = '⚠️ Excede el límite de 1M de tokens por minuto del tier gratuito. La petición fallará en el tier gratuito. Requiere clave de pago o dividir el archivo.';
+      // Modelos Flash (3.5 / 2.5)
+      if (tokens < 200000) {
+        badgeClass = 'badge-success';
+        badgeText = 'Flash · Muy Seguro';
+        msg = 'Consumo bajo. Esta petición se procesará sin problemas en el tier gratuito.';
+      } else if (tokens < 800000) {
+        badgeClass = 'badge-warning';
+        borderClass = 'warning-border';
+        badgeText = 'Flash · Moderado';
+        msg = 'Consumo moderado. Aceptado en el tier gratuito (límite 1M TPM).';
+      } else if (tokens < 1000000) {
+        badgeClass = 'badge-warning';
+        borderClass = 'warning-border';
+        textClass = 'text-warning';
+        badgeText = 'Flash · Límite Cercano';
+        msg = '¡Atención! Estás cerca del límite de 1M de tokens por minuto del tier gratuito. Si experimentas un error 429, espera un minuto antes de reintentar.';
+      } else {
+        badgeClass = 'badge-danger';
+        borderClass = 'danger-border';
+        textClass = 'text-danger';
+        badgeText = 'Flash · Excede Cuota';
+        msg = '⚠️ Excede el límite de 1M de tokens por minuto del tier gratuito. La petición fallará en el tier gratuito. Requiere clave de pago o dividir el archivo.';
+      }
     }
 
     e('token-count-val').textContent = tokens.toLocaleString('es-ES');
@@ -1037,13 +1070,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     container.className = 'token-estimator-container ' + borderClass;
     
-    var percent = Math.min(100, Math.round((tokens / 1000000) * 100));
+    var percent = Math.min(100, Math.round((tokens / freeLimit) * 100));
     var fillEl = e('token-bar-fill');
     if (fillEl) {
       fillEl.style.width = percent + '%';
-      if (tokens >= 1000000) {
+      if (tokens >= freeLimit) {
         fillEl.style.background = 'var(--danger)';
-      } else if (tokens >= 800000) {
+      } else if (tokens >= freeLimit * 0.8) {
         fillEl.style.background = 'var(--warning)';
       } else {
         fillEl.style.background = 'var(--accent)';
@@ -1052,6 +1085,10 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   aiEnabled.addEventListener('change', updateTokenEstimator);
+  var modelSelect = e('opt-ai-model');
+  if (modelSelect) {
+    modelSelect.addEventListener('change', updateTokenEstimator);
+  }
 
   /* Lógica de helpers y formateadores generales movida a js/utils.js */
 

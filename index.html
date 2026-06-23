@@ -251,7 +251,14 @@
             <span class="api-status" id="api-status"></span>
           </div>
 
-          <input type="hidden" id="opt-ai-model" value="gemini-3.5-flash" />
+          <div class="form-group" style="margin-top: 12px;">
+            <label class="form-label" for="opt-ai-model">Modelo de IA</label>
+            <select id="opt-ai-model" class="form-input" style="background: rgba(10, 11, 20, 0.4); cursor: pointer; color: var(--text-primary); font-size: 8.5pt;">
+              <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash (Última generación - rápido)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Estable y rápido - alternativa)</option>
+              <option value="gemini-3.1-pro">Gemini 3.1 Pro (Razonamiento complejo y análisis denso)</option>
+            </select>
+          </div>
 
           <div class="form-group" style="margin-top: 12px;">
             <label class="form-label" for="opt-ai-instructions">Instrucciones adicionales para la IA</label>
