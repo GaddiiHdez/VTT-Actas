@@ -1,0 +1,30 @@
+# Lista de Tareas - Personalización de Encabezados/Pies, Editor Interactivo y Robustez
+
+- [x] UI: Agregar controles de personalización de encabezado/pie en `index.html`
+- [x] Editor: Habilitar `contenteditable` y sincronización en vivo del contenido editado en `app.js`
+- [x] Editor: Estilos de cursor y hover para texto editable en `styles.css`
+- [x] Word: Actualizar `buildRTF` en `js/templates.js` con encabezados/pies y numeración de página dinámica
+- [x] PDF: Actualizar `printPDF` en `app.js` con estructura `thead`/`tfoot` para repetir encabezado/pie en cada página
+- [x] Robustez: Implementar `repairAndParseJSON` en `js/gemini.js` para corregir y cerrar JSONs truncados o con caracteres de control de Gemini
+- [x] Robustez: Modificar `app.js` para inicializar y mapear el JSON procesado de Gemini con valores por defecto seguros en caso de truncamiento parcial
+- [x] PDF: Corregir el posicionamiento del bloque de cobertura de pie de página en la primera hoja (`top: calc(100vh - 120px)`) para ocultar el pie solo en la primera página
+- [x] Word: Corregir la codificación de caracteres no-ASCII (`Organización`, `Límite`, `Página`, `automáticamente`) a formato decimal en las plantillas RTF para asegurar su compatibilidad
+- [x] Automatización: Diseñar el algoritmo de división automática en bloques de 45 minutos para reuniones largas en `app.js`
+- [x] Automatización: Crear e integrar la barra de progreso en `index.html` y vincularla con porcentajes, estado dinámico, ETA y visualización de partes en `app.js`
+- [x] Automatización: Adaptar el prompt en `js/gemini.js` para recibir y respetar el contexto de partes secuenciales
+- [x] Asistentes: Optimizar las prompt rules en `js/gemini.js` para instruir la unificación de nombres y descartar títulos genéricos
+- [x] Asistentes: Implement el filtro `cleanAttendees` y normalizador en `app.js` para depurar y deduplicar la lista de asistentes automáticamente
+- [x] Verbatim: Configurar instrucciones dinámicas para el estilo "Texto limpio / Verbatim" en `js/gemini.js` para transcribir y limpiar en vez de resumir
+- [x] Resiliencia: Diseñar e implementar un sistema de reintentos automáticos con retroceso exponencial (backoff) en `app.js` para mitigar errores 503 (alta demanda) y 429 (límite de cuota) de la API de Gemini
+- [x] Pruebas: Validar funcionamiento del editor, descarga de Word y PDF, y análisis de sintaxis de los archivos JS
+- [x] Local: Extracción automática de asistentes y sanitización inteligente
+- [x] Local: Formato de diálogo (script) con nombres de orador en negrita
+- [x] Local: Autocorrector de términos erróneos (reemplazo Find -> Replace en sidebar)
+- [x] Robustez: Persistencia de reglas del corrector en localStorage y restauración de sesión
+- [x] AI: Añadir selector de modelo `opt-ai-model` e instrucciones personalizadas `opt-ai-instructions` en `index.html`
+- [x] AI: Actualizar `app.js` para persistir, restaurar y observar los nuevos controles de IA
+- [x] AI: Ajustar dinámicamente `chunkDurationSec` en `runWithAI` de `app.js` según el estilo de salida
+- [x] AI: Inyectar `aiInstructions` en `buildPrompt` de `js/gemini.js`
+- [x] AI: Utilizar dinámicamente `o.model` (con `gemini-3.5-flash` por defecto) en `callGemini` de `js/gemini.js`
+- [x] AI: Verificar sintaxis y realizar pruebas de funcionamiento
+- [x] AI: Opción de forzar transcripción íntegra (evitando resúmenes u omisiones) en `index.html`, `app.js` y `js/gemini.js`
