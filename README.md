@@ -1,5 +1,7 @@
 # Minutify.io — Conversor de Audio y Transcripciones a Actas Oficiales
 
+**Versión 1.0.0 (Lanzamiento Oficial)** 🚀
+
 **Minutify.io** es una herramienta web premium, rápida y segura diseñada para transformar archivos de audio (.mp3, .wav, .m4a) y transcripciones de texto (.vtt, .srt, .txt) en actas de reunión oficiales, estructuradas y listas para su distribución formal.
 
 La aplicación es completamente **offline-first** (se ejecuta enteramente en el navegador del cliente) y no requiere ningún servidor ni base de datos, garantizando la privacidad absoluta de los datos de tus reuniones.
