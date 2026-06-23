@@ -1907,7 +1907,7 @@ body:has(#file-info-card:not(.hidden)) .hero-section {
 }
 
 /* Hide Upload/Dropzone card when the document is already generated */
-body:has(#output-section:not(.hidden)) #upload-section {
+body:has(#output-section:not(.hidden)) #drop-zone {
   display: none;
 }
 
