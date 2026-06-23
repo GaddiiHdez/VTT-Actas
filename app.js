@@ -45,7 +45,10 @@ document.addEventListener('DOMContentLoaded', function () {
     agreements: [],
     aiUsed:     false,
     plainText:  '',
-    htmlDoc:    ''
+    htmlDoc:    '',
+    inputType:  'text',
+    audioData:  null,
+    audioDuration: 0
   };
 
   /* ═══════════════════════════════════════
@@ -168,17 +171,32 @@ document.addEventListener('DOMContentLoaded', function () {
   /* ═══════════════════════════════════════
      FILE LOAD & RESET
   ═══════════════════════════════════════ */
+  function getMimeTypeFromExtension(filename) {
+    var ext = filename.split('.').pop().toLowerCase();
+    switch (ext) {
+      case 'mp3': return 'audio/mp3';
+      case 'wav': return 'audio/wav';
+      case 'm4a': return 'audio/m4a';
+      case 'ogg': return 'audio/ogg';
+      case 'aac': return 'audio/aac';
+      case 'flac': return 'audio/flac';
+      default: return 'audio/mp3';
+    }
+  }
+
   function loadFiles(fileList) {
     if (!fileList || fileList.length === 0) return;
 
-    // Filtrar y ordenar alfabéticamente (por nombre de archivo)
     var filesArray = Array.from(fileList).filter(function (f) {
       var name = f.name.toLowerCase();
-      return name.endsWith('.vtt') || name.endsWith('.srt') || name.endsWith('.txt');
+      return name.endsWith('.vtt') || name.endsWith('.srt') || name.endsWith('.txt') ||
+             name.endsWith('.mp3') || name.endsWith('.wav') || name.endsWith('.m4a') ||
+             name.endsWith('.ogg') || name.endsWith('.aac') || name.endsWith('.flac') ||
+             f.type.startsWith('audio/');
     });
 
     if (filesArray.length === 0) {
-      toast('Por favor selecciona archivos con extensión .vtt, .srt o .txt', true);
+      toast('Por favor selecciona archivos con extensión .vtt, .srt, .txt o audios (.mp3, .wav, .m4a)', true);
       return;
     }
 
@@ -186,59 +204,151 @@ document.addEventListener('DOMContentLoaded', function () {
       return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
     });
 
-    S.files = filesArray;
-    S.vttParts = [];
-    S.cues = [];
-    S.vttRaw = '';
-    S.file = { name: filesArray.length === 1 ? filesArray[0].name : filesArray.length + ' archivos cargados' };
+    var isAudioFile = filesArray.length > 0 && (
+      filesArray[0].name.toLowerCase().endsWith('.mp3') ||
+      filesArray[0].name.toLowerCase().endsWith('.wav') ||
+      filesArray[0].name.toLowerCase().endsWith('.m4a') ||
+      filesArray[0].name.toLowerCase().endsWith('.ogg') ||
+      filesArray[0].name.toLowerCase().endsWith('.aac') ||
+      filesArray[0].name.toLowerCase().endsWith('.flac') ||
+      filesArray[0].type.startsWith('audio/')
+    );
 
-    // Actualizar UI
-    var totalSize = filesArray.reduce(function (acc, f) { return acc + f.size; }, 0);
-    fileNameDisp.textContent = S.file.name;
-    fileSizeDisp.textContent = fmtBytes(totalSize);
-    fileStatusTx.textContent = 'Leyendo archivos...';
-    fileInfoCard.classList.remove('hidden');
-    convertBtn.disabled = true;
+    if (isAudioFile) {
+      var audioFile = filesArray[0];
+      S.files = [audioFile];
+      S.inputType = 'audio';
+      S.vttParts = [];
+      S.cues = [];
+      S.vttRaw = '';
+      S.file = { name: audioFile.name };
 
-    // Renderizar lista en UI
-    var fileListItems = e('file-list-items');
-    fileListItems.innerHTML = '';
-    filesArray.forEach(function (file) {
+      fileNameDisp.textContent = S.file.name;
+      fileSizeDisp.textContent = fmtBytes(audioFile.size);
+      fileStatusTx.textContent = 'Leyendo metadatos del audio...';
+      fileInfoCard.classList.remove('hidden');
+      convertBtn.disabled = true;
+
+      var fileListItems = e('file-list-items');
+      fileListItems.innerHTML = '';
       var item = document.createElement('div');
       item.className = 'file-list-item';
       item.innerHTML = 
         '<div class="file-list-item-left">' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>' +
-          '<span class="file-list-item-name">' + esc(file.name) + '</span>' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>' +
+          '<span class="file-list-item-name">' + esc(audioFile.name) + '</span>' +
         '</div>' +
-        '<span class="file-list-item-size">' + fmtBytes(file.size) + '</span>';
+        '<span class="file-list-item-size">' + fmtBytes(audioFile.size) + '</span>';
       fileListItems.appendChild(item);
-    });
 
-    // Leer archivos en paralelo
-    var loadedCount = 0;
-    var rawParts = new Array(filesArray.length);
-
-    filesArray.forEach(function (file, index) {
       var reader = new FileReader();
       reader.onload = function (ev) {
-        rawParts[index] = { name: file.name, size: file.size, content: ev.target.result };
-        loadedCount++;
-
-        if (loadedCount === filesArray.length) {
-          S.vttParts = rawParts;
-          mergePartsAndCues();
-          fileStatusTx.textContent = 'Listo para generar';
-          convertBtn.disabled = false;
-          toast('✓ ' + filesArray.length + ' archivos cargados');
-          saveState();
-        }
+        var base64Data = ev.target.result.split(',')[1];
+        var mime = audioFile.type || getMimeTypeFromExtension(audioFile.name);
+        S.audioData = {
+          mimeType: mime,
+          base64: base64Data,
+          name: audioFile.name,
+          size: audioFile.size
+        };
+        updateTokenEstimator();
       };
       reader.onerror = function () {
-        toast('Error al leer el archivo: ' + file.name, true);
+        toast('Error al leer el archivo de audio: ' + audioFile.name, true);
       };
-      reader.readAsText(file, 'UTF-8');
-    });
+      reader.readAsDataURL(audioFile);
+
+      var audioUrl = URL.createObjectURL(audioFile);
+      var tempAudio = new Audio();
+      tempAudio.src = audioUrl;
+      tempAudio.addEventListener('loadedmetadata', function () {
+        S.audioDuration = tempAudio.duration;
+        URL.revokeObjectURL(audioUrl);
+        fileStatusTx.textContent = 'Audio listo: ' + fmtDurLabel(S.audioDuration);
+        convertBtn.disabled = false;
+        
+        if (!aiEnabled.checked) {
+          aiEnabled.checked = true;
+          saveFormData();
+        }
+        
+        updateTokenEstimator();
+        saveState();
+        toast('✓ Archivo de audio cargado');
+      });
+      tempAudio.addEventListener('error', function () {
+        console.warn("Could not read audio duration, using fallback.");
+        S.audioDuration = audioFile.size / (16 * 1024);
+        URL.revokeObjectURL(audioUrl);
+        fileStatusTx.textContent = 'Audio listo (duración estimada)';
+        convertBtn.disabled = false;
+
+        if (!aiEnabled.checked) {
+          aiEnabled.checked = true;
+          saveFormData();
+        }
+
+        updateTokenEstimator();
+        saveState();
+        toast('✓ Archivo de audio cargado (duración estimada)');
+      });
+
+    } else {
+      S.files = filesArray;
+      S.inputType = 'text';
+      S.audioData = null;
+      S.audioDuration = 0;
+      S.vttParts = [];
+      S.cues = [];
+      S.vttRaw = '';
+      S.file = { name: filesArray.length === 1 ? filesArray[0].name : filesArray.length + ' archivos cargados' };
+
+      var totalSize = filesArray.reduce(function (acc, f) { return acc + f.size; }, 0);
+      fileNameDisp.textContent = S.file.name;
+      fileSizeDisp.textContent = fmtBytes(totalSize);
+      fileStatusTx.textContent = 'Leyendo archivos...';
+      fileInfoCard.classList.remove('hidden');
+      convertBtn.disabled = true;
+
+      var fileListItems = e('file-list-items');
+      fileListItems.innerHTML = '';
+      filesArray.forEach(function (file) {
+        var item = document.createElement('div');
+        item.className = 'file-list-item';
+        item.innerHTML = 
+          '<div class="file-list-item-left">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>' +
+            '<span class="file-list-item-name">' + esc(file.name) + '</span>' +
+          '</div>' +
+          '<span class="file-list-item-size">' + fmtBytes(file.size) + '</span>';
+        fileListItems.appendChild(item);
+      });
+
+      var loadedCount = 0;
+      var rawParts = new Array(filesArray.length);
+
+      filesArray.forEach(function (file, index) {
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          rawParts[index] = { name: file.name, size: file.size, content: ev.target.result };
+          loadedCount++;
+
+          if (loadedCount === filesArray.length) {
+            S.vttParts = rawParts;
+            mergePartsAndCues();
+            fileStatusTx.textContent = 'Listo para generar';
+            convertBtn.disabled = false;
+            updateTokenEstimator();
+            toast('✓ ' + filesArray.length + ' archivos cargados');
+            saveState();
+          }
+        };
+        reader.onerror = function () {
+          toast('Error al leer el archivo: ' + file.name, true);
+        };
+        reader.readAsText(file, 'UTF-8');
+      });
+    }
   }
 
   function mergePartsAndCues() {
@@ -272,13 +382,14 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function resetFile() {
-    S = { file:null, files:[], vttParts:[], cues:[], sections:[], attendees:[], agreements:[], aiUsed:false, plainText:'', htmlDoc:'' };
+    S = { file:null, files:[], vttParts:[], cues:[], sections:[], attendees:[], agreements:[], aiUsed:false, plainText:'', htmlDoc:'', inputType:'text', audioData:null, audioDuration:0 };
     fileInput.value = '';
     e('file-list-items').innerHTML = '';
     fileInfoCard.classList.add('hidden');
     outputSec.classList.add('hidden');
     convertBtn.disabled = true;
     localStorage.removeItem('vtt_actas_last_state');
+    updateTokenEstimator();
   }
 
   /* ═══════════════════════════════════════
@@ -347,29 +458,49 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function doConvert() {
-    if (!S.vttRaw) { toast('El archivo no ha terminado de cargarse.', true); return; }
     var o = opts();
+
+    if (S.inputType === 'audio') {
+      if (!S.audioData) { toast('El archivo de audio no ha terminado de cargarse.', true); return; }
+      if (!o.useAI) { toast('El procesamiento de audio requiere activar Gemini AI.', true); return; }
+      
+      var estimatedTokens = Math.ceil(S.audioDuration * 258) + 2500;
+      if (estimatedTokens > 1000000) {
+        var proceed = confirm('El archivo de audio excede el límite de 1M de tokens del tier gratuito. Si no tienes una cuenta de facturación de pago en Google AI Studio, la solicitud podría fallar con un error de límite de cuota (HTTP 429). ¿Deseas continuar de todos modos?');
+        if (!proceed) return;
+      }
+    } else {
+      if (!S.vttRaw) { toast('El archivo no ha terminado de cargarse.', true); return; }
+      
+      var rawLen = S.vttRaw ? S.vttRaw.length : 0;
+      var estimatedTokens = Math.ceil(rawLen / 3.5) + 2500;
+      if (estimatedTokens > 1000000) {
+        var proceed = confirm('El texto de entrada excede el límite de 1M de tokens del tier gratuito. Si no tienes una cuenta de facturación de pago, la solicitud podría fallar. ¿Deseas continuar?');
+        if (!proceed) return;
+      }
+    }
 
     setConvertLoading(true, o.useAI ? 'Consultando Gemini AI...' : 'Procesando...');
 
     try {
-      // Aplicar el corrector de términos en local (sobre una copia temporal de cues)
-      var correctedCues = applyLocalCorrections(S.cues, o.corrections);
-
-      // Usar cues ya procesados, combinados y desfasados en mergePartsAndCues()
-      var processed = o.dedup ? V.dedup(correctedCues) : correctedCues;
-
-      if (o.useAI) {
-        if (S.aiUsed && S.sections.length > 0) {
-          S.plainText = V.buildPlain(S.sections, o, S.attendees, S.agreements);
-          S.htmlDoc   = V.buildHTML(S.sections, o, S.attendees, S.agreements, true);
-          renderOutput(true);
-          toast('✨ Vista actualizada (usando respuesta de IA anterior)');
-          return;
-        }
-        await runWithAI(processed, o);
+      if (S.inputType === 'audio') {
+        await runWithAI([], o);
       } else {
-        runLocal(processed, o, true);
+        var correctedCues = applyLocalCorrections(S.cues, o.corrections);
+        var processed = o.dedup ? V.dedup(correctedCues) : correctedCues;
+
+        if (o.useAI) {
+          if (S.aiUsed && S.sections.length > 0) {
+            S.plainText = V.buildPlain(S.sections, o, S.attendees, S.agreements);
+            S.htmlDoc   = V.buildHTML(S.sections, o, S.attendees, S.agreements, true);
+            renderOutput(true);
+            toast('✨ Vista actualizada (usando respuesta de IA anterior)');
+            return;
+          }
+          await runWithAI(processed, o);
+        } else {
+          runLocal(processed, o, true);
+        }
       }
 
     } catch (err) {
@@ -406,6 +537,116 @@ document.addEventListener('DOMContentLoaded', function () {
   // Lógica de asistentes movida a js/utils.js
 
   async function runWithAI(cues, o) {
+    if (S.inputType === 'audio') {
+      updateProgress(true, 'Enviando audio a Gemini AI (puede tomar de 1 a 3 minutos)...', 30, 'Transcribiendo y analizando...', 'Parte 1 de 1');
+      setConvertLoading(true, '✨ Escuchando y procesando audio...');
+
+      var chunkOpts = Object.assign({}, o, { isAudio: true, audioData: S.audioData });
+      var chunkResult;
+      
+      var maxRetries = 4;
+      var attempt = 0;
+      var backoffMs = 3000;
+      while (attempt < maxRetries) {
+        try {
+          chunkResult = await V.callGemini([], chunkOpts);
+          break;
+        } catch (err) {
+          attempt++;
+          var errMsg = err.message || '';
+          var isRetriable = errMsg.toLowerCase().indexOf('high demand') !== -1 ||
+                            errMsg.toLowerCase().indexOf('429') !== -1 ||
+                            errMsg.toLowerCase().indexOf('503') !== -1 ||
+                            errMsg.toLowerCase().indexOf('quota') !== -1 ||
+                            errMsg.toLowerCase().indexOf('resource exhausted') !== -1 ||
+                            errMsg.toLowerCase().indexOf('fetch') !== -1 ||
+                            errMsg.toLowerCase().indexOf('network') !== -1 ||
+                            errMsg.toLowerCase().indexOf('failed') !== -1;
+
+          if (attempt < maxRetries && isRetriable) {
+            console.warn('Gemini falló en audio (intento ' + attempt + '). Reintentando en ' + (backoffMs/1000) + 's...', err);
+            updateProgress(true, '⚠️ Servidor saturado. Reintentando en ' + (backoffMs/1000) + 's... (Intento ' + attempt + '/' + (maxRetries - 1) + ')', 30, 'Esperando reintento...', 'Parte 1 de 1');
+            await new Promise(function(resolve) { setTimeout(resolve, backoffMs); });
+            backoffMs *= 2;
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      S.aiUsed = true;
+      
+      var asistentes = chunkResult.asistentes || [];
+      S.attendees = cleanAttendees(asistentes);
+
+      S.agreements = (chunkResult.acuerdos || []).map(function(ag, idx) {
+        return {
+          numero: idx + 1,
+          descripcion: ag.descripcion || '',
+          responsable: ag.responsable || '',
+          fecha_limite: ag.fecha_limite || ''
+        };
+      });
+
+      S.sections = (chunkResult.secciones || []).map(function(sec) {
+        var paras = (sec.contenido || '').split(/\n\n+/).filter(function(p){ return p.trim(); });
+        return { title: sec.titulo || 'Sección', tipo: sec.tipo || 'otro', paragraphs: paras };
+      });
+
+      if (!e('doc-title').value.trim() && chunkResult.titulo_detectado) {
+        e('doc-title').value = chunkResult.titulo_detectado;
+        o.title = chunkResult.titulo_detectado;
+      }
+
+      var mockCues = [];
+      var currentOffset = 0;
+      if (chunkResult.analytics && chunkResult.analytics.speakers && chunkResult.analytics.speakers.length > 0) {
+        chunkResult.analytics.speakers.forEach(function(sp) {
+          var name = sp.name;
+          var dur = sp.duration_seconds || 10;
+          var words = sp.word_count || 30;
+          
+          mockCues.push({
+            speaker: name,
+            ss: currentOffset,
+            es: currentOffset + dur,
+            start: formatSecondsToTS(currentOffset),
+            end: formatSecondsToTS(currentOffset + dur),
+            text: 'Intervención de ' + name + ' (estimación: ' + words + ' palabras).'
+          });
+          currentOffset += dur;
+        });
+      } else {
+        S.attendees.forEach(function(att, idx) {
+          mockCues.push({
+            speaker: att,
+            ss: idx * 10,
+            es: (idx + 1) * 10,
+            start: formatSecondsToTS(idx * 10),
+            end: formatSecondsToTS((idx + 1) * 10),
+            text: 'Intervención del asistente ' + att
+          });
+        });
+      }
+      S.cues = mockCues;
+
+      var totalWords = S.sections.reduce(function(a, sec) {
+        return a + sec.paragraphs.join(' ').split(/\s+/).length;
+      }, 0);
+      statWords.textContent = totalWords.toLocaleString('es-ES');
+      statSegs.textContent  = S.sections.length;
+      statDur.textContent   = fmtDurLabel(S.audioDuration);
+
+      S.plainText = V.buildPlain(S.sections, o, S.attendees, S.agreements);
+      S.htmlDoc   = V.buildHTML(S.sections, o, S.attendees, S.agreements, true);
+
+      renderOutput(true);
+      toast('✨ Acta generada a partir de audio — ' + S.sections.length + ' secciones');
+      updateProgress(true, '✓ ¡Acta generada con éxito!', 100, 'Completado', 'Finalizado');
+      await new Promise(function(resolve) { setTimeout(resolve, 1000); });
+      return;
+    }
+
     var chunkDurationSec = 45 * 60; // 45 minutos por defecto
     if (o && (o.aiForceFull || o.style === 'verbatim')) {
       chunkDurationSec = 30 * 60; // 30 minutos para forzar transcripción íntegra (evita rebasar salida de tokens)
@@ -728,9 +969,94 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  /* Estimador de Tokens y Costos (Gemini 3.5 Flash) */
+  function updateTokenEstimator() {
+    var container = e('token-estimator-container');
+    if (!container) return;
+
+    if (!aiEnabled.checked || (!S.file && S.files.length === 0 && !S.audioData)) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    container.classList.remove('hidden');
+
+    var tokens = 0;
+    var cost = 0.0;
+    var badgeClass = 'badge-success';
+    var badgeText = 'Cuota Gratuita';
+    var msg = '';
+    var borderClass = '';
+    var textClass = '';
+
+    if (S.inputType === 'audio') {
+      var dur = S.audioDuration || 0;
+      tokens = Math.ceil(dur * 258) + 2500;
+    } else {
+      var rawLen = S.vttRaw ? S.vttRaw.length : 0;
+      tokens = Math.ceil(rawLen / 3.5) + 2500;
+    }
+
+    cost = (tokens / 1000000) * 0.075;
+
+    if (tokens < 200000) {
+      badgeClass = 'badge-success';
+      badgeText = 'Grátis · Muy Seguro';
+      msg = 'Consumo bajo. Esta petición se procesará sin problemas en el tier gratuito.';
+    } else if (tokens < 800000) {
+      badgeClass = 'badge-warning';
+      borderClass = 'warning-border';
+      badgeText = 'Grátis · Moderado';
+      msg = 'Consumo moderado. Aceptado en el tier gratuito (límite 1M TPM).';
+    } else if (tokens < 1000000) {
+      badgeClass = 'badge-warning';
+      borderClass = 'warning-border';
+      textClass = 'text-warning';
+      badgeText = 'Grátis · Límite Cercano';
+      msg = '¡Atención! Estás cerca del límite de 1M de tokens por minuto del tier gratuito. Si experimentas un error 429, espera un minuto antes de reintentar.';
+    } else {
+      badgeClass = 'badge-danger';
+      borderClass = 'danger-border';
+      textClass = 'text-danger';
+      badgeText = 'Excede Cuota';
+      msg = '⚠️ Excede el límite de 1M de tokens por minuto del tier gratuito. La petición fallará en el tier gratuito. Requiere clave de pago o dividir el archivo.';
+    }
+
+    e('token-count-val').textContent = tokens.toLocaleString('es-ES');
+    e('token-cost-val').textContent = '$' + cost.toFixed(4) + ' USD';
+    
+    var badgeEl = e('token-badge');
+    badgeEl.className = 'badge ' + badgeClass;
+    badgeEl.textContent = badgeText;
+
+    var warningEl = e('token-warning-msg');
+    warningEl.className = 'estimator-warning ' + textClass;
+    warningEl.textContent = msg;
+
+    container.className = 'token-estimator-container ' + borderClass;
+    
+    var percent = Math.min(100, Math.round((tokens / 1000000) * 100));
+    var fillEl = e('token-bar-fill');
+    if (fillEl) {
+      fillEl.style.width = percent + '%';
+      if (tokens >= 1000000) {
+        fillEl.style.background = 'var(--danger)';
+      } else if (tokens >= 800000) {
+        fillEl.style.background = 'var(--warning)';
+      } else {
+        fillEl.style.background = 'var(--accent)';
+      }
+    }
+  }
+
+  aiEnabled.addEventListener('change', updateTokenEstimator);
+
   /* Lógica de helpers y formateadores generales movida a js/utils.js */
 
   // Run restoreSession initially
   restoreSession();
+
+  // Initial update just in case
+  setTimeout(updateTokenEstimator, 500);
 
 }); // DOMContentLoaded

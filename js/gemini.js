@@ -1,15 +1,16 @@
 (function(exports) {
   'use strict';
 
-  /* ═══════════════════════════════════════
-     GEMINI AI
-  ═══════════════════════════════════════ */
+  /* =======================================
+     GEMINI AI MÓDULO
+     ======================================= */
   exports.buildPrompt = function(cues, o) {
-    var fullText = cues.map(function(c){ return c.text; }).join(' ');
+    var isAudio = o && o.isAudio;
+    var fullText = !isAudio && cues ? cues.map(function(c){ return c.text; }).join(' ') : '';
 
     var partInstruction = '';
     if (o && o.totalParts && o.totalParts > 1) {
-      partInstruction = '[CONTEXTO IMPORTANTE: Esta reunión es muy larga y se ha dividido en partes. Estás procesando la PARTE ' + (o.partIndex + 1) + ' de ' + o.totalParts + '. Redacta las secciones del acta y los acuerdos ÚNICAMENTE para esta porción del texto. Mantén la consistencia y no inventes el final.]';
+      partInstruction = '[CONTEXTO IMPORTANTE: Esta reunión es muy larga y se ha dividido en partes. Estás procesando la PARTE ' + (o.partIndex + 1) + ' de ' + o.totalParts + '. Redacta las secciones del acta y los acuerdos ÚNICAMENTE para esta porción. Mantén la consistencia y no inventes el final.]';
     }
 
     var styleInstructions = [];
@@ -17,18 +18,18 @@
       styleInstructions = [
         'Tu tarea es generar la TRANSCRIPCIÓN COMPLETA Y CORREGIDA (Estilo TEXTO LIMPIO / VERBATIM) de la reunión.',
         'Reglas extremadamente estrictas para este estilo:',
-        '1. NO resumas, NO sintetices, NO acortes y NO omitas nada de información del texto original de la reunión.',
-        '2. El resultado debe ser una copia fiel y palabra por palabra de los diálogos de la transcripción provista, pero limpia y pulida de errores ortográficos, nombres mal escritos y puntuación.',
+        '1. NO resumas, NO sintetices, NO acortes y NO omitas nada de información del material original.',
+        '2. El resultado debe ser una copia fiel y palabra por palabra de los diálogos, pero limpia y pulida de errores ortográficos, nombres mal escritos y puntuación.',
         '3. Mantén la primera persona (los participantes hablando directamente). NO redactes en tercera persona (nada de "El presidente dijo...").',
         '4. Remueve únicamente muletillas obvias y titubeos (como "eh", "este", "bueno", "pues"). Conserva todo el resto del texto.',
-        '5. La longitud del texto de salida debe ser muy similar a la de entrada. Si la transcripción tiene muchos párrafos y palabras, tu salida debe tener muchos párrafos y palabras. Si resumes o acortas la reunión, habrás fallado la tarea por completo.',
-        '6. Acomoda el diálogo limpio completo dentro de las secciones correspondientes en el arreglo "secciones". Cada bloque en "contenido" debe tener el diálogo completo y corregido correspondientes a esa porción de la reunión, con párrafos separados por dos saltos de línea (\\n\\n).'
+        '5. La longitud del texto de salida debe ser muy similar a la de entrada. Si resumes o acortas la reunión, habrás fallado la tarea por completo.',
+        '6. Acomoda el diálogo limpio completo dentro de las secciones correspondientes en el arreglo "secciones". Cada bloque en "contenido" debe tener el diálogo completo y corregido, con párrafos separados por dos saltos de línea (\\n\\n).'
       ];
     } else {
       styleInstructions = [
         'Tu tarea es generar un acta oficial estructurada (Estilo FORMAL/MINUTA).',
         'Reglas de redacción:',
-        '1. Corrige errores de ASR usando el contexto (si dice "Cavalidad" probablemente es "Calidad").',
+        '1. Corrige errores ortográficos o nombres usando el contexto.',
         '2. Redacta en tercera persona formal: "El Presidente declaró...", "El Secretario informó...".',
         '3. Elimina muletillas: "eh", "este", "o sea", "¿no?", "pues", "nada más".',
         '4. Mantén los números de los puntos del orden del día.',
@@ -55,18 +56,18 @@
     if (o && o.aiForceFull) {
       forceFullInstructions = '[REGLA CRÍTICA DE GENERACIÓN COMPLETA - DEBES CUMPLIRLA OBLIGATORIAMENTE:\n' +
         '- EL USUARIO ACTIVO LA OPCIÓN DE FORZAR TRANSCRIPCIÓN ÍNTEGRA.\n' +
-        '- NO DEBES RESUMIR, NO DEBES ACORTAR, NO DEBES OMITIR NINGUNA SECCIÓN NI INTERVENCIÓN del texto original de la reunión.\n' +
-        '- Todo el contenido de la transcripción provista debe ser representado en el contenido del JSON, sin resúmenes sintéticos de ningún tipo.\n' +
+        '- NO DEBES RESUMIR, NO DEBES ACORTAR, NO DEBES OMITIR NINGUNA SECCIÓN NI INTERVENCION del original.\n' +
+        '- Todo el contenido debe ser representado en el contenido del JSON, sin resúmenes sintéticos de ningún tipo.\n' +
         '- Si resumes, acortas o simplificas el texto, habrás fallado la tarea por completo.\n' +
         ']';
     }
 
-    return [
+    var lines = [
       'Eres un experto redactor y editor de actas y transcripciones en español formal mexicano.',
       partInstruction,
       '',
-      'Recibirás la transcripción automática de voz (ASR) de una reunión formal.',
-      'La transcripción puede contener errores de ASR: palabras mal transcritas, nombres incorrectos, falta de puntuación y repeticiones.',
+      isAudio ? 'Recibirás el archivo de audio de una reunión formal.' : 'Recibirás la transcripción automática de voz (ASR) de una reunión formal.',
+      isAudio ? 'Escucha el audio adjunto con atención para transcribir y estructurar los diálogos y acuerdos de la reunión.' : 'La transcripción puede contener errores de ASR: palabras mal transcritas, nombres incorrectos, falta de puntuación y repeticiones.',
       '',
       styleInstructions.join('\n'),
       '',
@@ -80,7 +81,7 @@
       '',
       'Estructura exacta requerida:',
       '{',
-      '  "titulo_detectado": "string — título completo de la reunión que detectes en el texto",',
+      isAudio ? '  "titulo_detectado": "string — título completo de la reunión que detectes en el audio",' : '  "titulo_detectado": "string — título completo de la reunión que detectes en el texto",',
       '  "asistentes": ["nombre completo con grado académico/cargo si se menciona"],',
       '  "secciones": [',
       '    {',
@@ -96,18 +97,24 @@
       '      "responsable": "nombre o null",',
       '      "fecha_limite": "fecha o null"',
       '    }',
-      '  ]',
+      '  ]' + (isAudio ? ',' : ''),
+      isAudio ? '  "analytics": {\n    "speakers": [\n      {\n        "name": "nombre del orador",\n        "duration_seconds": 120,\n        "word_count": 350\n      }\n    ]\n  }' : '',
       '}',
       '',
       'Contexto adicional del documento:',
       o.org      ? '   Organización: ' + o.org : '',
       o.title    ? '   Título dado por el usuario: ' + o.title : '',
       o.location ? '   Lugar/plataforma: ' + o.location : '',
-      '',
-      'Transcripción a procesar:',
-      '---',
-      fullText
-    ].filter(function(l){ return l !== undefined && l !== ''; }).join('\n');
+      ''
+    ];
+
+    if (!isAudio) {
+      lines.push('Transcripción a procesar:');
+      lines.push('---');
+      lines.push(fullText);
+    }
+
+    return lines.filter(function(l){ return l !== undefined && l !== ''; }).join('\n');
   };
 
   exports.callGemini = async function(cues, o) {
@@ -160,8 +167,43 @@
       required: ["titulo_detectado", "asistentes", "secciones", "acuerdos"]
     };
 
+    var isAudio = o && o.isAudio;
+    if (isAudio) {
+      schema.properties.analytics = {
+        type: "OBJECT",
+        properties: {
+          speakers: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING", description: "Nombre o identificador del orador" },
+                duration_seconds: { type: "INTEGER", description: "Duración estimada del total de tiempo que habló el orador en segundos" },
+                word_count: { type: "INTEGER", description: "Cantidad estimada de palabras que pronunció" }
+              },
+              required: ["name", "duration_seconds", "word_count"]
+            },
+            description: "Estadísticas y estimaciones de los oradores identificados en el audio"
+          }
+        },
+        required: ["speakers"]
+      };
+      schema.required.push("analytics");
+    }
+
+    var parts = [];
+    if (isAudio && o.audioData) {
+      parts.push({
+        inlineData: {
+          mimeType: o.audioData.mimeType,
+          data: o.audioData.base64
+        }
+      });
+    }
+    parts.push({ text: exports.buildPrompt(cues, o) });
+
     var body = {
-      contents: [{ parts: [{ text: exports.buildPrompt(cues, o) }] }],
+      contents: [{ parts: parts }],
       generationConfig: {
         temperature:      0.2,
         topP:             0.85,

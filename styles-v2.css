@@ -2162,4 +2162,110 @@ body:has(#file-info-card:not(.hidden)) .workspace-panel {
   font-size: 0.65rem;
 }
 
+/* ============ Token Estimator Styles ============ */
+.token-estimator-container {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.token-estimator-container.warning-border {
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+}
+
+.token-estimator-container.danger-border {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+.estimator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.estimator-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 8.5pt;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.badge {
+  font-size: 7.5pt;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34D399;
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #FBBF24;
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #F87171;
+}
+
+.estimator-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  color: var(--text-muted);
+  font-size: 7.5pt;
+  margin-bottom: 2px;
+}
+
+.metric-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 9.5pt;
+}
+
+.estimator-warning {
+  font-size: 7.5pt;
+  line-height: 1.4;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.estimator-warning.text-warning {
+  color: #FBBF24;
+}
+
+.estimator-warning.text-danger {
+  color: #F87171;
+}
+
+
 

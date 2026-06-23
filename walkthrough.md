@@ -92,10 +92,10 @@ Se añadió un nuevo bloque de opciones en la barra lateral de [index.html](file
 - **Persistencia Completa:** Las reglas de autocorrección se sincronizan en tiempo real mediante `saveFormData` e `inputsToWatch`, se guardan en `localStorage` y se restauran automáticamente en `restoreSession` al reiniciar la aplicación.
 - **Aplicación Global y Segura:** Modificamos `doConvert` para instanciar una copia temporal de los `cues` y aplicar mediante expresiones regulares seguras (escapando caracteres especiales de regex) los reemplazos a nivel de texto (`cue.text`) y orador (`cue.speaker`), funcionando de forma transparente tanto para el motor local como para el de Gemini AI.
 
-### 14. 🤖 Selección del Modelo Gemini & Instrucciones Personalizadas
-- **Selector de Modelo**: Agregamos un control desplegable (`#opt-ai-model`) en la tarjeta de configuración de IA, que permite al usuario alternar entre **Gemini 3.5 Flash** (modelo predeterminado de última generación, rápido y potente) y **Gemini 1.5 Pro** (para casos complejos de alta exigencia).
+### 14. 🤖 Instrucciones Personalizadas de Gemini AI
+- **Fijado en Gemini 3.5 Flash**: La aplicación utiliza de manera exclusiva el modelo **Gemini 3.5 Flash** (modelo de última generación, rápido y potente) para garantizar el mejor rendimiento y velocidad.
 - **Instrucciones Personalizadas**: Añadimos un área de texto (`#opt-ai-instructions`) para ingresar directrices adicionales que se inyectan como reglas prioritarias del sistema en `buildPrompt()`, otorgándole control total al usuario sobre el tono y enfoque del acta.
-- **Persistencia**: Se sincroniza y persiste el estado de ambos controles a través de la sesión en `localStorage` mediante `saveFormData` y `restoreSession`.
+- **Persistencia**: Se sincroniza y persiste el estado del control a través de la sesión en `localStorage` mediante `saveFormData` y `restoreSession`.
 
 ### 15. ⏱️ Segmentación Dinámica por Estilo de Acta
 - **Optimización de Bloques:** Modificamos la segmentación de la reunión en `runWithAI` para adaptar dinámicamente la duración de cada fragmento según el estilo seleccionado:
@@ -107,6 +107,25 @@ Se añadió un nuevo bloque de opciones en la barra lateral de [index.html](file
 - **Prompt Ultra-Estricto:** Cuando la opción está activa, `buildPrompt` en [js/gemini.js](file:///c:/Users/Admin/Documents/CCx/js/gemini.js) inyecta instrucciones críticamente imperativas ordenando a la IA a representar y transcribir cada fragmento en su totalidad sin ningún resumen, omisión, corte o simplificación del diálogo.
 - **Seguridad en Extensión:** Al activar esta opción, en [app.js](file:///c:/Users/Admin/Documents/CCx/app.js) se limita automáticamente la segmentación cronológica a fragmentos de **30 minutos** (incluso si se seleccionaron estilos Formal o Minuta) para asegurar que el gran volumen de texto resultante no sufra cortes por el límite de salida de la API de Gemini.
 
+### 17. 🎙️ Soporte de Carga de Archivos de Audio y Transcripción Multimodal
+- **Formatos de Audio:** El selector de archivos y la zona de arrastre (`#drop-zone`) ahora aceptan archivos de audio convencionales (`.mp3`, `.wav`, `.m4a`, `.ogg`, `.aac`, `.flac`).
+- **Medición de Duración:** Al cargar un audio, se inicializa un elemento `<audio>` temporal con un ObjectURL del archivo para obtener su duración precisa en segundos. Si falla, estima la duración mediante el tamaño del archivo (asumiendo 128 kbps).
+- **Lectura en Base64:** Se lee el contenido binario del audio en base64 para enviarlo a través de la propiedad `inlineData` del payload de Gemini en `js/gemini.js`.
+- **Compatibilidad de Analíticas:** Dado que el audio no contiene subtítulos locales con marcas de tiempo, la API de Gemini solicita mediante JSON Schema estadísticas estimadas de habla de los oradores (`analytics.speakers`). Posteriormente, `app.js` genera cues cronológicos ficticios pero coherentes que permiten al motor visual de `js/analytics.js` dibujar el dashboard a la perfección.
+
+### 18. 🪙 Estimador de Tokens, Costos y Advertencias de Cuota (Gemini 3.5 Flash)
+- **Panel Estimador:** Insertamos un bloque visual glassmorphic (`#token-estimator-container`) arriba del botón de conversión, visible únicamente cuando se activa la IA. Muestra en tiempo real la cantidad de tokens calculados y el costo aproximado.
+- **Fórmulas de Estimación:**
+  - **Texto:** `Math.ceil(caracteres / 3.5) + 2500` tokens.
+  - **Audio:** `Math.ceil(duracion_segundos * 258) + 2500` tokens (la tasa de Gemini para audio es de 258 tokens/segundo).
+- **Cálculo de Costo:** Se estima sobre la tarifa base de Gemini 3.5 Flash ($0.075 USD por cada 1 millón de tokens).
+- **Alertas de Límites de la Cuota Gratuita (Free Tier):**
+  - **Verde (<200k tokens):** "Grátis · Muy Seguro".
+  - **Amarillo (200k - 800k tokens):** "Grátis · Moderado".
+  - **Naranja (800k - 1M tokens):** "Grátis · Límite Cercano" (avisa sobre el límite de cuota 1M TPM).
+  - **Rojo (>1M tokens):** "Excede Cuota" (advierte que fallará a menos que se use una clave API con facturación activa).
+- **Advertencia antes de Continuar:** Al hacer clic en "Generar Acta", si el volumen supera 1,000,000 de tokens, un diálogo nativo de confirmación interrumpe la ejecución para alertar al usuario sobre posibles costos en claves de pago o fallos de cuota en claves gratuitas.
+
 ---
 
 ## Verificación Realizada
@@ -117,6 +136,10 @@ Se añadió un nuevo bloque de opciones en la barra lateral de [index.html](file
 3. **Validación del Corrector:** Se comprobó que las reglas (ej: `Cavalidad -> Calidad`) funcionen correctamente de forma insensible a mayúsculas/minúsculas y no alteren los cues base en memoria.
 4. **Validación de la Configuración de IA**:
    - Se comprobó la persistencia y restauración del modelo seleccionado (`gemini-3.5-flash`), las instrucciones personalizadas y la opción de forzar la transcripción íntegra.
-   - Se verificó que al elegir `Gemini 1.5 Pro` el endpoint API de Google AI Studio cambie correspondientemente.
+   - Se verificó que la aplicación realice solicitudes de manera exclusiva utilizando Gemini 3.5 Flash (eliminando Gemini 1.5 por completo).
    - Se constató que las instrucciones personalizadas y de forzar transcripción se inyecten debidamente al final de las reglas del prompt principal enviado a la API.
    - Se verificó que al estar activo el toggle de transcripción íntegra la segmentación de tiempo se fije estrictamente en 30 minutos.
+5. **Validación de Carga de Audio y Estimador:**
+   - Se probó la carga de archivos de texto y se verificó que el estimador muestre los tokens (e.g. ~3,000 tokens para actas pequeñas) y el costo correspondiente en verde.
+   - Se cargó un archivo de audio y se constató que la lectura de duración funciona (calculando tokens a razón de 258/seg).
+   - Se eliminaron las referencias del selector visual de Gemini 1.5 Pro, fijando todo a Gemini 3.5 Flash en los cálculos y en la interfaz.

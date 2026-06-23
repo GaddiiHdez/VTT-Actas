@@ -42,7 +42,7 @@ El proyecto está diseñado de forma modular en Javascript nativo para facilitar
 * **[js/exporter.js](js/exporter.js)**: Lógica de exportación de archivos locales e impresión a PDF.
 * **[js/analytics.js](js/analytics.js)**: Motor estadístico y renderizador visual del panel de analíticas.
 * **[js/parser.js](js/parser.js)**: Intérprete y decodificador cronológico de archivos `.vtt`.
-* **[js/gemini.js](js/gemini.js)**: Módulo de integración con la API de Google Gemini (versiones 1.5 Pro y 3.5 Flash) y corrector/reparador de JSON truncado.
+* **[js/gemini.js](js/gemini.js)**: Módulo de integración con la API de Google Gemini (versión 3.5 Flash) y corrector/reparador de JSON truncado.
 * **[js/templates.js](js/templates.js)**: Plantillas y generador de marcado HTML, texto plano y RTF de salida.
 
 ---
