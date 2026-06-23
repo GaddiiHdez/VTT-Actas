@@ -1,6 +1,6 @@
-# VTT Actas — Conversor de Subtítulos a Actas Oficiales
+# Minutify.io — Conversor de Audio y Transcripciones a Actas Oficiales
 
-**VTT Actas** es una herramienta web premium, rápida y segura diseñada para transformar archivos de subtítulos y transcripciones automáticas en formato `.vtt` (generados por plataformas como Microsoft Teams, Zoom, Google Meet o Webex) en actas de reunión oficiales, estructuradas y listas para su distribución formal.
+**Minutify.io** es una herramienta web premium, rápida y segura diseñada para transformar archivos de audio (.mp3, .wav, .m4a) y transcripciones de texto (.vtt, .srt, .txt) en actas de reunión oficiales, estructuradas y listas para su distribución formal.
 
 La aplicación es completamente **offline-first** (se ejecuta enteramente en el navegador del cliente) y no requiere ningún servidor ni base de datos, garantizando la privacidad absoluta de los datos de tus reuniones.
 

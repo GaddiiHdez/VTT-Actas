@@ -1,5 +1,5 @@
 /**
- * VTT Actas — app.js (Controlador Principal)
+ * Minutify.io — app.js (Controlador Principal)
  * Coordinación de eventos del DOM, carga múltiple de archivos y persistencia.
  */
 
