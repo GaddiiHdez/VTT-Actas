@@ -173,11 +173,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Filtrar y ordenar alfabéticamente (por nombre de archivo)
     var filesArray = Array.from(fileList).filter(function (f) {
-      return f.name.toLowerCase().endsWith('.vtt');
+      var name = f.name.toLowerCase();
+      return name.endsWith('.vtt') || name.endsWith('.srt') || name.endsWith('.txt');
     });
 
     if (filesArray.length === 0) {
-      toast('Por favor selecciona archivos con extensión .vtt', true);
+      toast('Por favor selecciona archivos con extensión .vtt, .srt o .txt', true);
       return;
     }
 
@@ -189,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
     S.vttParts = [];
     S.cues = [];
     S.vttRaw = '';
-    S.file = { name: filesArray.length === 1 ? filesArray[0].name : filesArray.length + ' archivos VTT' };
+    S.file = { name: filesArray.length === 1 ? filesArray[0].name : filesArray.length + ' archivos cargados' };
 
     // Actualizar UI
     var totalSize = filesArray.reduce(function (acc, f) { return acc + f.size; }, 0);

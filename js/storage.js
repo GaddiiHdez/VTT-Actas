@@ -124,7 +124,7 @@
 
           if (data.files && data.files.length > 0) {
             S.files = data.files;
-            S.file = { name: data.files.length === 1 ? data.files[0].name : data.files.length + ' archivos VTT' };
+            S.file = { name: data.files.length === 1 ? data.files[0].name : data.files.length + ' archivos cargados' };
 
             var fileNameDisp = document.getElementById('file-name-display');
             var fileSizeDisp = document.getElementById('file-size-display');

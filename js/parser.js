@@ -5,10 +5,18 @@
      VTT PARSER
   ═══════════════════════════════════════ */
   exports.parseVTT = function(raw) {
+    if (raw.indexOf('-->') === -1) {
+      return exports.parseTXT(raw);
+    }
+    
     var lines = raw.split(/\r?\n/), cues = [], i = 0;
-    while (i < lines.length && !lines[i].startsWith('WEBVTT')) i++;
-    i++;
-    while (i < lines.length && /^[A-Za-z]+:/.test(lines[i].trim())) i++;
+    var isVtt = raw.indexOf('WEBVTT') !== -1;
+    if (isVtt) {
+      while (i < lines.length && !lines[i].startsWith('WEBVTT')) i++;
+      i++;
+      while (i < lines.length && /^[A-Za-z]+:/.test(lines[i].trim())) i++;
+    }
+    
     while (i < lines.length) {
       while (i < lines.length && lines[i].trim() === '') i++;
       if (i >= lines.length) break;
@@ -24,7 +32,49 @@
     return cues;
   };
 
-  function isTS(l) { return /\d+:\d{2}[.:]\d{3}\s*-->\s*\d+:\d{2}/.test(l); }
+  exports.parseTXT = function(raw) {
+    var lines = raw.split(/\r?\n/), cues = [];
+    var currentSec = 0;
+    
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (line === '') continue;
+      
+      var spk = extractSpk(line);
+      var txt = strip(spk.text).trim();
+      if (!txt) continue;
+      
+      var words = txt.split(/\s+/).length;
+      var dur = Math.max(3, Math.ceil(words / 2.5)); // Aprox 2.5 palabras por segundo, minimo 3 segs
+      
+      var ss = currentSec;
+      var es = ss + dur;
+      
+      var sLabel = formatSecondsToTSLocal(ss);
+      var eLabel = formatSecondsToTSLocal(es);
+      
+      cues.push({
+        start: sLabel,
+        end: eLabel,
+        ss: ss,
+        es: es,
+        speaker: spk.sp,
+        text: txt
+      });
+      
+      currentSec = es + 1; // 1 segundo de separación
+    }
+    return cues;
+  };
+
+  function formatSecondsToTSLocal(s) {
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = Math.floor(s % 60);
+    return pad2(h) + ':' + pad2(m) + ':' + pad2(sec);
+  }
+
+  function isTS(l) { return /\d+:\d{2}[.:,]\d{3}\s*-->\s*\d+:\d{2}/.test(l); }
 
   function parseTimes(l) {
     var p = l.split('-->');
